@@ -1,0 +1,7 @@
+{
+  "name": "threejsproject",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "angular"
+}
