@@ -21,6 +21,8 @@ import {
   AmbientLight,
   MeshStandardMaterial,
   SpotLight,
+  SphereGeometry,
+  SpotLightHelper,
 } from 'three';
 
 @Component({
@@ -35,9 +37,10 @@ export class ThreejsDemoComponent implements OnInit, AfterViewInit {
   camera!: PerspectiveCamera;
   renderer!: WebGLRenderer;
   cube!: Mesh<BoxGeometry, MeshStandardMaterial>;
+  sphere!: Mesh<SphereGeometry, MeshStandardMaterial>;
   rotation_speed!: number;
   clock: Clock = new Clock();
-  map!: Mesh;
+  map!: Mesh<BufferGeometry, MeshStandardMaterial>;
   startColor!: Color;
   targetColor!: Color;
   colorTransitionDuration!: number;
@@ -47,10 +50,11 @@ export class ThreejsDemoComponent implements OnInit, AfterViewInit {
   lightIntensity!: number;
   ambientLight!: AmbientLight;
   spotLight!: SpotLight;
+  spotLightHelper!: SpotLightHelper;
 
-  constructor() {}
+  constructor() { }
 
-  ngOnInit() {}
+  ngOnInit() { }
 
   ngAfterViewInit(): void {
     this.scene = new Scene();
@@ -66,12 +70,29 @@ export class ThreejsDemoComponent implements OnInit, AfterViewInit {
     });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
 
+    this.renderer.shadowMap.enabled = true;
+
     this.rotation_speed = 10;
 
-    const geometry = new BoxGeometry(2, 2, 2);
-    const material = new MeshStandardMaterial({ color: 0x00ff00 });
-    this.cube = new Mesh(geometry, material);
+    const box_geometry = new BoxGeometry(2, 2, 2);
+    const box_material = new MeshStandardMaterial({ color: 0x00ff00 });
+    this.cube = new Mesh(box_geometry, box_material);
+
+    this.cube.position.set(10, 10, 0);
+
+    this.cube.castShadow = true;
+
     this.scene.add(this.cube);
+
+    const sphere_geometry = new SphereGeometry(5, 32, 16);
+    const sphere_material = new MeshStandardMaterial({ color: Color.NAMES.aquamarine })
+    this.sphere = new Mesh(sphere_geometry, sphere_material);
+
+    this.sphere.position.set(0, 10, 0);
+
+    this.sphere.castShadow = true;
+
+    this.scene.add(this.sphere);
 
     this.startColor = new Color(0x70d4fa);
     this.targetColor = new Color(0xf75d2f);
@@ -82,23 +103,29 @@ export class ThreejsDemoComponent implements OnInit, AfterViewInit {
 
     this.cube.material.color.set(this.startColor);
 
-    this.lightColor = new Color(0x404040);
-    this.lightIntensity = 10;
+    // this.spotLight = new SpotLight(0xffffff, 1000, 25, Math.PI * 0.1, 0.15, 1);
+    this.spotLight = new SpotLight(0xffffff, 1000);
+    this.spotLight.penumbra = 0.15
+    this.spotLight.position.set(0, 40, 0);
+    this.spotLight.target = this.sphere;
 
-    // this.ambientLight = new AmbientLight(this.lightColor, this.lightIntensity);
-    // this.ambientLight.position.set(100, 1000, 100);
-    // this.scene.add(this.ambientLight);
-
-    this.spotLight = new SpotLight(this.lightColor, this.lightIntensity);
-    this.spotLight.position.set(0, 100, 0);
-    this.spotLight.target = this.cube;
     this.spotLight.castShadow = true;
 
     this.scene.add(this.spotLight);
 
+    this.spotLightHelper = new SpotLightHelper( this.spotLight );
+		this.scene.add( this.spotLightHelper );
+
+
+    this.lightColor = new Color(0x404040);
+    this.lightIntensity = 10;
+
+    this.ambientLight = new AmbientLight(this.lightColor, this.lightIntensity);
+    this.ambientLight.position.set(100, 1000, 100);
+    this.scene.add(this.ambientLight);
 
     this.camera.position.set(0, 15, 30);
-    this.camera.rotation.set(-0.8, 0, 0);
+    this.camera.rotation.set(-0.6, 0, 0);
 
     this.renderer.setAnimationLoop(() => this.animate());
 
@@ -215,6 +242,7 @@ export class ThreejsDemoComponent implements OnInit, AfterViewInit {
       'color',
       new BufferAttribute(new Float32Array(colors), 4) // set color of geometry
     );
+    geometry.computeVertexNormals();
 
     const material = new MeshStandardMaterial();
     material.vertexColors = true;
