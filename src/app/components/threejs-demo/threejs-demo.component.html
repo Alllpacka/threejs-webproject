@@ -1,0 +1,14 @@
+<p>
+  threejs-demo works!
+</p>
+<ion-range aria-label="RotationSpeed" [value]="0" (ionChange)="onRotationChange($event)">
+  <ion-icon slot="start" name="bicycle-outline" ></ion-icon>
+  <ion-icon slot="end" name="infinite-outline"></ion-icon>
+</ion-range>
+<ion-range aria-label="ligthIntensity" [value]="0" (ionChange)="onLightIntensityChange($event)">
+  <ion-icon slot="start" name="bicycle-outline" ></ion-icon>
+  <ion-icon slot="end" name="infinite-outline"></ion-icon>
+</ion-range>
+<canvas #threejs>
+
+</canvas>
