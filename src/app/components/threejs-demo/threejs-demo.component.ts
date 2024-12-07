@@ -25,6 +25,8 @@ import {
   SpotLightHelper,
 } from 'three';
 
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+
 @Component({
   selector: 'app-threejs-demo',
   templateUrl: './threejs-demo.component.html',
@@ -72,10 +74,25 @@ export class ThreejsDemoComponent implements OnInit, AfterViewInit {
 
     this.renderer.shadowMap.enabled = true;
 
+    const controls = new OrbitControls(this.camera, this.renderer.domElement)
+    controls.enableDamping = true
+
+    const loader = new TextureLoader();
+    loader.load('assets/heightmaps/heightmap.png', (texture: Texture) =>
+      this.onTextureLoaded(texture)
+    );
+
     this.rotation_speed = 10;
 
     const box_geometry = new BoxGeometry(2, 2, 2);
     const box_material = new MeshStandardMaterial({ color: 0x00ff00 });
+
+    const normalMap = loader.load('assets/normalMap.png');
+
+    box_material.normalMap = normalMap;
+
+    box_material.normalScale.set(20,20);
+
     this.cube = new Mesh(box_geometry, box_material);
 
     this.cube.position.set(10, 10, 0);
@@ -128,32 +145,27 @@ export class ThreejsDemoComponent implements OnInit, AfterViewInit {
     this.camera.rotation.set(-0.6, 0, 0);
 
     this.renderer.setAnimationLoop(() => this.animate());
-
-    const loader = new TextureLoader();
-    loader.load('assets/heightmaps/heightmap.png', (texture: Texture) =>
-      this.onTextureLoaded(texture)
-    );
   }
 
   animate() {
     const elapsed = this.clock.getDelta();
 
-    this.colorProgress +=
-      (elapsed / this.colorTransitionDuration) * this.colorDirection;
+    // this.colorProgress +=
+    //   (elapsed / this.colorTransitionDuration) * this.colorDirection;
 
-    if (this.colorProgress >= 1) {
-      this.colorProgress = 1;
-      this.colorDirection = -1;
-    } else if (this.colorProgress <= 0) {
-      this.colorProgress = 0;
-      this.colorDirection = 1;
-    }
+    // if (this.colorProgress >= 1) {
+    //   this.colorProgress = 1;
+    //   this.colorDirection = -1;
+    // } else if (this.colorProgress <= 0) {
+    //   this.colorProgress = 0;
+    //   this.colorDirection = 1;
+    // }
 
-    this.cube.material.color.lerpColors(
-      this.startColor,
-      this.targetColor,
-      this.colorProgress
-    );
+    // this.cube.material.color.lerpColors(
+    //   this.startColor,
+    //   this.targetColor,
+    //   this.colorProgress
+    // );
 
     this.cube.rotation.x += this.rotation_speed * 0.1 * elapsed;
     this.cube.rotation.y += this.rotation_speed * 0.1 * elapsed;
