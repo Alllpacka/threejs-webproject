@@ -1,38 +1,96 @@
 import {
-  Component, OnInit, AfterViewInit,
+  Component,
+  OnInit,
+  AfterViewInit,
   ViewChild,
   ElementRef,
 } from '@angular/core';
-import { AmbientLight, BufferAttribute, BufferGeometry, Color, Loader, Mesh, MeshStandardMaterial, PerspectiveCamera, Scene, SpotLight, SpotLightHelper, Texture, TextureLoader, WebGLRenderer } from 'three';
-
+import {
+  AmbientLight,
+  BackSide,
+  Box3,
+  BoxGeometry,
+  BufferAttribute,
+  BufferGeometry,
+  Color,
+  CylinderGeometry,
+  DoubleSide,
+  Euler,
+  Mesh,
+  MeshBasicMaterial,
+  MeshPhongMaterial,
+  MeshPhysicalMaterial,
+  MeshStandardMaterial,
+  PerspectiveCamera,
+  PlaneGeometry,
+  Scene,
+  ShaderMaterial,
+  SphereGeometry,
+  SpotLight,
+  SpotLightHelper,
+  Texture,
+  TextureLoader,
+  Vector3,
+  WebGLRenderer,
+} from 'three';
 
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { MapControls } from 'three/examples/jsm/controls/MapControls';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
 @Component({
   selector: 'app-desert',
   templateUrl: './desert.component.html',
   styleUrls: ['./desert.component.scss'],
 })
-
 export class DesertComponent implements OnInit, AfterViewInit {
   @ViewChild('desert')
   canvas!: ElementRef<HTMLCanvasElement>;
   scene!: Scene;
   camera!: PerspectiveCamera;
   renderer!: WebGLRenderer;
-  map!: Mesh<BufferGeometry, MeshStandardMaterial>;
+  map!: Mesh<BufferGeometry, MeshPhongMaterial>;
+  plane!: Mesh<PlaneGeometry, MeshPhongMaterial>;
   ambientLight!: AmbientLight;
   spotLight!: SpotLight;
   spotLightHelper!: SpotLightHelper;
+  sky!: Mesh<SphereGeometry, MeshStandardMaterial>;
+  innerSpotLight!: SpotLight;
+  innerSpotLightHelper!: SpotLightHelper;
 
-  constructor() { }
+  laser!: Mesh<CylinderGeometry, MeshStandardMaterial>;
+  laser2!: Mesh<CylinderGeometry, MeshStandardMaterial>;
 
-  ngOnInit() { }
+  moon!: Mesh<SphereGeometry, MeshStandardMaterial>;
+  moonLight!: SpotLight;
+  moonLightHelper!: SpotLightHelper;
+  moonHelper!: Mesh<BoxGeometry, MeshBasicMaterial>;
+
+  outerSpotLight!: SpotLight;
+  outerSpotLightHelper!: SpotLightHelper;
+  helperCube!: Mesh<BoxGeometry, MeshBasicMaterial>;
+  helperCube2!: Mesh<BoxGeometry, MeshBasicMaterial>;
+
+  xAxis = new Vector3(1, 0, 0);
+  yAxis = new Vector3(0, 1, 0);
+  zAxis = new Vector3(0, 0, 1);
+
+  radius = 50; // Radius of the circle
+  angle = 0; // Angle in radians
+  speed = 0.001; // Speed of the rotation
+
+  constructor() {}
+
+  ngOnInit() {}
 
   ngAfterViewInit(): void {
     this.scene = new Scene();
-    this.camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    this.camera = new PerspectiveCamera(
+      75,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      10000
+    );
     this.renderer = new WebGLRenderer({
       canvas: this.canvas.nativeElement,
       antialias: true,
@@ -40,29 +98,209 @@ export class DesertComponent implements OnInit, AfterViewInit {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
 
-    const mapControls = new MapControls(this.camera, this.renderer.domElement)
+    const mapControls = new MapControls(this.camera, this.renderer.domElement);
     mapControls.enableDamping = true;
     mapControls.dampingFactor = 0.05;
     mapControls.zoomToCursor = true;
 
+    // const loader = new TextureLoader();
+    // loader.load('assets/heightmaps/dunes/ground_0043_height_1k.png', (texture: Texture) =>
+    //   this.onTextureLoaded(texture)
+    // );
+
+    const planeGeomitry = new PlaneGeometry(100, 100, 1000, 1000);
+
+    const planeMaterial = new MeshPhongMaterial();
+
     const loader = new TextureLoader();
-    loader.load('assets/heightmaps/render2.png', (texture: Texture) =>
-      this.onTextureLoaded(texture)
+
+    const texture = loader.load(
+      'assets/heightmaps/dunes/ground_0043_color_1k.jpg'
+    );
+    const displacement = loader.load(
+      'assets/heightmaps/dunes/ground_0043_roughness_1k.jpg'
+    );
+    const normal = loader.load(
+      'assets/heightmaps/dunes/ground_0043_normal_opengl_1k.png'
     );
 
-    this.spotLight = new SpotLight(0xffffff, 1000);
-    this.spotLight.penumbra = 0.15
-    this.spotLight.position.set(0, 60, 0);
+    planeMaterial.map = texture;
+    planeMaterial.displacementMap = displacement;
+    planeMaterial.displacementScale = 5;
 
-    this.spotLight.castShadow = true;
+    planeMaterial.normalMap = normal;
+    planeMaterial.normalScale.set(4, 4);
 
-    this.scene.add(this.spotLight);
+    this.plane = new Mesh(planeGeomitry, planeMaterial);
+    this.plane.rotation.x = -Math.PI / 2;
 
-    this.spotLightHelper = new SpotLightHelper(this.spotLight);
-    this.scene.add(this.spotLightHelper);
+    this.plane.receiveShadow = true;
+    this.plane.castShadow = true;
+
+    this.plane.position.y = -2;
+
+    this.scene.add(this.plane);
+
+    const gltfLoader = new GLTFLoader();
+
+    gltfLoader.load('assets/models/inner_pyramid.glb', (gltf) => {
+      const pyramid = gltf.scene;
+      pyramid.scale.set(5, 5, 5);
+      pyramid.receiveShadow = true;
+      pyramid.castShadow = true;
+      pyramid.position.set(0, 8, 0);
+      this.scene.add(pyramid);
+    });
+
+    gltfLoader.load('assets/models/outer_pyramid.glb', (gltf) => {
+      const pyramid = gltf.scene;
+      pyramid.scale.set(5, 5, 5);
+      pyramid.receiveShadow = true;
+      pyramid.castShadow = true;
+      pyramid.position.set(0, 8, 0);
+      this.scene.add(pyramid);
+    });
+
+    const skyGeomitry = new SphereGeometry();
+    const skyMaterial = new MeshStandardMaterial();
+
+    const skyTexture = loader.load('assets/stars2.png');
+
+    skyMaterial.map = skyTexture;
+    skyMaterial.side = DoubleSide;
+    skyMaterial.emissive = new Color(0xfb7108);
+    skyMaterial.emissiveIntensity = 0.001;
+
+    this.sky = new Mesh(skyGeomitry, skyMaterial);
+
+    this.sky.scale.set(100, 100, 100);
+    this.sky.position.y = 5;
+
+    this.scene.add(this.sky);
+
+    // this.spotLight = new SpotLight(0xffffff, 100);
+    // this.spotLight.penumbra = 0.15
+    // this.spotLight.position.set(0, 60, 0);
+
+    // this.spotLight.castShadow = true;
+
+    // this.scene.add(this.spotLight);
+
+    // this.spotLightHelper = new SpotLightHelper(this.spotLight);
+    // this.scene.add(this.spotLightHelper);
+
+    // this.helperCube = new Mesh(new BoxGeometry(), new MeshBasicMaterial());
+
+    // this.helperCube.position.set(0, 12, 0);
+    // this.helperCube.visible = false;
+
+    // this.scene.add(this.helperCube);
+
+    // this.helperCube2 = new Mesh(new BoxGeometry(), new MeshBasicMaterial());
+
+    // this.helperCube2.position.set(0, 100, 0);
+    // this.helperCube2.visible = false;
+
+    // this.scene.add(this.helperCube2);
+
+    // this.innerSpotLight = new SpotLight(0xfb7108, 10);
+    // this.innerSpotLight.target = this.helperCube;
+    // this.innerSpotLight.position.y = 7;
+    // this.innerSpotLight.angle = 0.2;
+    // this.innerSpotLight.distance = 4.7;
+
+    // this.innerSpotLightHelper = new SpotLightHelper(this.innerSpotLight);
+
+    // this.scene.add(this.innerSpotLight, this.innerSpotLightHelper);
+
+    const laserGeomitry = new CylinderGeometry(0.95, 0.001, 5, 32);
+    const laserMaterial = new MeshPhysicalMaterial({
+      color: 0xfb7108,
+      emissive: 0xfb7108,
+      transparent: true,
+      opacity: 0.01,
+      roughness: 0.1,
+      metalness: 0.2,
+      transmission: 0.9,
+      ior: 1.5,
+      thickness: 0.2,
+      depthTest: true,
+      depthWrite: false,
+    });
+
+    this.laser = new Mesh(laserGeomitry, laserMaterial);
+
+    this.laser.position.y = 9.2;
+
+    this.scene.add(this.laser);
+
+    // this.outerSpotLight = new SpotLight(0xFB7108);
+    // this.outerSpotLight.target = this.helperCube2;
+    // this.outerSpotLight.position.y = 15;
+    // this.outerSpotLight.angle
+
+    const laserGeomitry2 = new CylinderGeometry(1, 0.3, 100, 32);
+    const laserMaterial2 = new MeshPhysicalMaterial({
+      color: 0xfb7108,
+      emissive: 0xfb7108,
+      transparent: true,
+      opacity: 0.4,
+      roughness: 0.1,
+      metalness: 0.2,
+      transmission: 0.9,
+      ior: 1.5,
+      thickness: 0.2,
+      depthTest: true,
+      depthWrite: false,
+    });
+
+    this.laser2 = new Mesh(laserGeomitry2, laserMaterial2);
+
+    this.laser2.position.y = 62;
+
+    this.scene.add(this.laser2);
+
+    const moonHelperGeometry = new BoxGeometry();
+
+    const moonHelperMaterial = new MeshBasicMaterial();
+
+    this.moonHelper = new Mesh(moonHelperGeometry, moonHelperMaterial);
+
+    // this.moonHelper.visible = false;
+
+    this.scene.add(this.moonHelper);
+
+    this.moonLight = new SpotLight(0xfb7108, 10000);
+  
+    this.moonLight.distance = 70;
+    this.moonLight.angle = 0.2
+
+
+    this.moonLight.target = this.moonHelper;
+    this.moonLight.position.set(10, 50, 0);
+
+    this.moonLightHelper = new SpotLightHelper(this.moonLight);
+    this.scene.add(this.moonLight, this.moonLightHelper);
+
+    const moonGemomitry = new SphereGeometry();
+
+    const moonMap = loader.load('assets/moonTexture_Orange.png');
+    const moonDisplacement = loader.load('assets/moonDisplacement.png');
+
+    const moonMaterial = new MeshStandardMaterial({
+      map: moonMap,
+      displacementMap: moonDisplacement,
+      displacementScale: 0.1,
+    });
+
+    this.moon = new Mesh(moonGemomitry, moonMaterial);
+
+    this.moon.position.set(10, 50, 0);
+
+    this.scene.add(this.moon);
 
     this.ambientLight = new AmbientLight(Color.NAMES.white, 0.1);
-    this.ambientLight.position.set(100, 1000, 100);
+    this.ambientLight.position.set(100, 10000, 100);
     this.scene.add(this.ambientLight);
 
     this.camera.position.set(0, 15, 30);
@@ -72,6 +310,22 @@ export class DesertComponent implements OnInit, AfterViewInit {
   }
 
   animate() {
+    this.sky.rotateOnAxis(this.yAxis, Math.PI / 50 / 180);
+    this.moon.rotateOnAxis(this.yAxis, Math.PI / 50 / 180);
+
+    this.angle += this.speed; // Increment the angle
+    this.moon.position.x = this.radius * Math.cos(this.angle); // x-coordinate
+    this.moon.position.z = this.radius * Math.sin(this.angle); // z-coordinate
+
+    this.moonHelper.position.x = (this.radius / 3) * Math.cos(this.angle * 2);
+    this.moonHelper.position.z = (this.radius / 3) * Math.cos(this.angle * 2);
+
+    this.moonLight.position.set(this.moon.position.x, this.moon.position.y, this.moon.position.z);
+
+    this.moonLight.target = this.moonHelper;
+
+    this.moonLightHelper.update();
+    
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -93,8 +347,8 @@ export class DesertComponent implements OnInit, AfterViewInit {
     const colors = [];
     const colorsInfos = [
       [0.5, 0.25, 0], // Darker orange for lower parts
-      [1, 0.5, 0],    // Vibrant orange for mid-level parts
-      [1, 0.25, 0],   // Bright orange for top parts
+      [1, 0.5, 0], // Vibrant orange for mid-level parts
+      [1, 0.25, 0], // Bright orange for top parts
     ];
     const indices = [];
 
@@ -103,7 +357,7 @@ export class DesertComponent implements OnInit, AfterViewInit {
       for (let x = 0; x < data.width; x++) {
         const index = x * 4 + z * data.width * 4;
         const normalHeight = data.data[index] / 255; // normalize height data
-        const y = Math.pow(normalHeight, 4);
+        const y = Math.pow(normalHeight, 1);
 
         // Determine a blend factor based on height
         // Blend height to match orange shades
@@ -120,7 +374,7 @@ export class DesertComponent implements OnInit, AfterViewInit {
         colors.push(...blendedColor, 1);
 
         vertices.push(x - data.width / 2); // center terain around origin
-        vertices.push(y * 5); // make height more pronounced
+        vertices.push(y * 5); // msake height more pronounced
         vertices.push(z - data.height / 2); // center around origin
       }
     }
@@ -154,7 +408,7 @@ export class DesertComponent implements OnInit, AfterViewInit {
     );
     geometry.computeVertexNormals();
 
-    const material = new MeshStandardMaterial();
+    const material = new MeshPhongMaterial();
     material.vertexColors = true;
     material.wireframe = false;
 
@@ -165,5 +419,4 @@ export class DesertComponent implements OnInit, AfterViewInit {
     this.scene.add(this.map);
     console.log(this.map);
   }
-
 }
