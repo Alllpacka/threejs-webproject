@@ -30,6 +30,7 @@
     "@types/three": "^0.169.0",
     "ionicons": "^7.0.0",
     "rxjs": "~7.8.0",
+    "sparksjs": "^0.0.0",
     "three": "^0.170.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.14.2"

@@ -7,29 +7,30 @@ import {
 } from '@angular/core';
 import {
   AmbientLight,
-  BackSide,
-  Box3,
+  AnimationMixer,
   BoxGeometry,
   BufferAttribute,
   BufferGeometry,
+  Clock,
   Color,
   CylinderGeometry,
   DoubleSide,
-  Euler,
+  FogExp2,
   Mesh,
   MeshBasicMaterial,
+  MeshLambertMaterial,
   MeshPhongMaterial,
   MeshPhysicalMaterial,
   MeshStandardMaterial,
   PerspectiveCamera,
   PlaneGeometry,
   Scene,
-  ShaderMaterial,
   SphereGeometry,
   SpotLight,
   SpotLightHelper,
   Texture,
   TextureLoader,
+  Vector2,
   Vector3,
   WebGLRenderer,
 } from 'three';
@@ -37,6 +38,9 @@ import {
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { MapControls } from 'three/examples/jsm/controls/MapControls';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass';
 
 @Component({
   selector: 'app-desert',
@@ -49,6 +53,11 @@ export class DesertComponent implements OnInit, AfterViewInit {
   scene!: Scene;
   camera!: PerspectiveCamera;
   renderer!: WebGLRenderer;
+  composer!: EffectComposer;
+
+  clock!: Clock;
+  mixer!: AnimationMixer;
+
   map!: Mesh<BufferGeometry, MeshPhongMaterial>;
   plane!: Mesh<PlaneGeometry, MeshPhongMaterial>;
   ambientLight!: AmbientLight;
@@ -60,6 +69,8 @@ export class DesertComponent implements OnInit, AfterViewInit {
 
   laser!: Mesh<CylinderGeometry, MeshStandardMaterial>;
   laser2!: Mesh<CylinderGeometry, MeshStandardMaterial>;
+
+  fog!: FogExp2;
 
   moon!: Mesh<SphereGeometry, MeshStandardMaterial>;
   moonLight!: SpotLight;
@@ -97,6 +108,16 @@ export class DesertComponent implements OnInit, AfterViewInit {
     });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
+
+    this.clock = new Clock();
+
+    this.composer = new EffectComposer(this.renderer);
+
+    const renderPass = new RenderPass(this.scene, this.camera);
+    this.composer.addPass(renderPass);
+
+    const bloomPass = new UnrealBloomPass(new Vector2(window.innerWidth, window.innerHeight), 1.5, 0.55, 0.21);
+    this.composer.addPass(bloomPass);
 
     const mapControls = new MapControls(this.camera, this.renderer.domElement);
     mapControls.enableDamping = true;
@@ -143,7 +164,7 @@ export class DesertComponent implements OnInit, AfterViewInit {
 
     const gltfLoader = new GLTFLoader();
 
-    gltfLoader.load('assets/models/inner_pyramid.glb', (gltf) => {
+    gltfLoader.load('assets/models/inner_pyramid_bottom.glb', (gltf) => {
       const pyramid = gltf.scene;
       pyramid.scale.set(5, 5, 5);
       pyramid.receiveShadow = true;
@@ -152,8 +173,54 @@ export class DesertComponent implements OnInit, AfterViewInit {
       this.scene.add(pyramid);
     });
 
-    gltfLoader.load('assets/models/outer_pyramid.glb', (gltf) => {
+    gltfLoader.load('assets/models/inner_pyramid_top.glb', (gltf) => {
       const pyramid = gltf.scene;
+
+      if (pyramid instanceof Mesh && pyramid.material instanceof MeshStandardMaterial) {
+        pyramid.material.emissive = new Color(0xFB7108);
+        pyramid.material.emissiveIntensity = 1;
+      }
+
+      pyramid.scale.set(5, 5, 5);
+      pyramid.receiveShadow = true;
+      pyramid.castShadow = true;
+      pyramid.position.set(0, 8, 0);
+      this.scene.add(pyramid);
+    });
+
+    gltfLoader.load('assets/models/outer_pyramid_top.glb', (gltf) => {
+      const pyramid = gltf.scene;
+
+      if (pyramid instanceof Mesh && pyramid.material instanceof MeshStandardMaterial) {
+        pyramid.material.emissive = new Color(0xFB7108);
+        pyramid.material.emissiveIntensity = 1;
+      }
+
+      this.mixer = new AnimationMixer(pyramid);
+
+      gltf.animations.forEach((clip) => {
+        const clipAction = this.mixer.clipAction(clip);
+        clipAction.timeScale = 1.2;
+        clipAction.play();
+      });
+
+      pyramid.scale.set(5, 5, 5);
+      pyramid.receiveShadow = true;
+      pyramid.castShadow = true;
+      pyramid.position.set(0, 8, 0);
+      this.scene.add(pyramid);
+    });
+
+    gltfLoader.load('assets/models/outer_pyramid_bottom.glb', (gltf) => {
+      const pyramid = gltf.scene;
+
+      if (pyramid instanceof Mesh && pyramid.material instanceof MeshStandardMaterial) {
+        // pyramid.material.transparent = true
+        // pyramid.material.depthWrite = false;
+        // pyramid.material.opacity = 0.95;
+        pyramid.material.alphaTest = 0.5;
+      }
+
       pyramid.scale.set(5, 5, 5);
       pyramid.receiveShadow = true;
       pyramid.castShadow = true;
@@ -213,12 +280,12 @@ export class DesertComponent implements OnInit, AfterViewInit {
 
     // this.scene.add(this.innerSpotLight, this.innerSpotLightHelper);
 
-    const laserGeomitry = new CylinderGeometry(0.95, 0.001, 5, 32);
+    const laserGeomitry = new CylinderGeometry(0.95, 0.001, 5.5, 32);
     const laserMaterial = new MeshPhysicalMaterial({
       color: 0xfb7108,
       emissive: 0xfb7108,
       transparent: true,
-      opacity: 0.01,
+      opacity: 0.1,
       roughness: 0.1,
       metalness: 0.2,
       transmission: 0.9,
@@ -260,6 +327,8 @@ export class DesertComponent implements OnInit, AfterViewInit {
 
     this.scene.add(this.laser2);
 
+    this.scene.fog = new FogExp2(0x555555, 0.005);
+
     const moonHelperGeometry = new BoxGeometry();
 
     const moonHelperMaterial = new MeshBasicMaterial();
@@ -272,7 +341,7 @@ export class DesertComponent implements OnInit, AfterViewInit {
 
     this.moonLight = new SpotLight(0xfb7108, 10000);
   
-    this.moonLight.distance = 70;
+    this.moonLight.distance = 80;
     this.moonLight.angle = 0.2
 
 
@@ -325,8 +394,12 @@ export class DesertComponent implements OnInit, AfterViewInit {
     this.moonLight.target = this.moonHelper;
 
     this.moonLightHelper.update();
+
+    if (this.mixer) this.mixer.update(this.clock.getDelta());
+
+    this.composer.render();
     
-    this.renderer.render(this.scene, this.camera);
+    // this.renderer.render(this.scene, this.camera);
   }
 
   private onTextureLoaded(texture: Texture) {
